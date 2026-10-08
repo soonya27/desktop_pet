@@ -8,13 +8,13 @@ const WALK_DISTANCE: [number, number] = [150, 600];
 /** 깨어 있다가 잠들기까지 (4~5분) */
 const AWAKE_MS: [number, number] = [4 * 60_000, 5 * 60_000];
 /** 걷다가 잠깐 앉아 쉬기: 확률과 시간 (5~15초) */
-const SIT_CHANCE = 0.35;
+const SIT_CHANCE = 0.15;
 const SIT_MS: [number, number] = [5_000, 15_000];
 /** 걷다가 그루터기에 앉아 노래하기: 확률과 시간 (10~20초) */
-const SING_CHANCE = 0.2;
+const SING_CHANCE = 0.08;
 const SING_MS: [number, number] = [10_000, 20_000];
 /** 걷다가 사진 찍기: 확률과 시간 (6~12초) */
-const PHOTO_CHANCE = 0.15;
+const PHOTO_CHANCE = 0.07;
 const PHOTO_MS: [number, number] = [6_000, 12_000];
 /** 한 번 잠드는 시간 (1~3분). 지나면 스스로 깬다 */
 const SLEEP_MS: [number, number] = [60_000, 180_000];
@@ -396,13 +396,14 @@ export class Character {
     this.syncSkin();
   }
 
-  /** 쉴 자리: 직선 구간의 양 끝(모서리 바로 앞) 중 가장 가까운 곳 */
+  /** 쉴 자리: 모서리에서 캐릭터 폭만큼 여유를 둔 직선 구간의 양쪽 지점 */
   private nearestRestSpot(): number {
     let best = this.s;
     let bestDist = Infinity;
     for (const seg of this.path) {
       if (seg.edge === null) continue;
-      for (const spot of [seg.start, seg.start + seg.length]) {
+      const clearance = Math.min(this.skin.width * 1.5, seg.length / 2);
+      for (const spot of [seg.start + clearance, seg.start + seg.length - clearance]) {
         const d = Math.abs(angleLike(this.s, spot, this.perimeter));
         if (d < bestDist) {
           bestDist = d;
@@ -411,6 +412,15 @@ export class Character {
       }
     }
     return best;
+  }
+
+  /** 화면 꼭짓점 주변에서는 쉬기·노래·사진 모션을 시작하지 않는다 */
+  private isInCornerZone(): boolean {
+    const { x, y } = this.locate(this.s);
+    const margin = this.skin.width * 1.5;
+    const nearHorizontalEdge = x <= margin || x >= window.innerWidth - margin;
+    const nearVerticalEdge = y <= margin || y >= window.innerHeight - margin;
+    return nearHorizontalEdge && nearVerticalEdge;
   }
 
   private wakeUp(): void {
@@ -459,6 +469,7 @@ export class Character {
         this.walkRemaining -= step;
         if (this.walkRemaining <= 0) {
           if (this.restOnArrive) this.enter("rest");
+          else if (this.isInCornerZone()) this.enter("idle");
           else {
             // 걷기 후 랜덤 행동: 노래하기 → 앉아 쉬기 → 가만히 있기
             const roll = Math.random();

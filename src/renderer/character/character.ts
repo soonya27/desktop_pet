@@ -2,11 +2,16 @@ import type { CharacterTakeoverPayload, Point } from "../../shared/ipc";
 import { REACT_VARIANTS, type AnimState, type Mood, type ReactVariant } from "../../shared/types";
 import type { Skin } from "./skin";
 
-const WALK_SPEED = 55; // px/s
+const WALK_SPEED = 32; // px/s — 천천히 걸어 다닌다
 const IDLE_MS: [number, number] = [2_000, 6_000];
-const REST_MS: [number, number] = [40_000, 150_000];
-const WALK_DISTANCE: [number, number] = [120, 420];
-const REST_CHANCE = 0.2;
+const WALK_DISTANCE: [number, number] = [150, 600];
+/** 깨어 있다가 잠들기까지 (4~5분) */
+const AWAKE_MS: [number, number] = [4 * 60_000, 5 * 60_000];
+/** 걷다가 잠깐 앉아 쉬기: 확률과 시간 (5~15초) */
+const SIT_CHANCE = 0.35;
+const SIT_MS: [number, number] = [5_000, 15_000];
+/** 한 번 잠드는 시간 (1~3분). 지나면 스스로 깬다 */
+const SLEEP_MS: [number, number] = [60_000, 180_000];
 const GRAVITY = 2_600; // px/s²
 const MAX_FALL_SPEED = 1_800;
 const LAND_MS = 350;
@@ -137,6 +142,9 @@ export class Character {
   private dir: 1 | -1 = 1;
   private walkRemaining = 0;
   private restOnArrive = false;
+  /** 마지막으로 깬 시각과 이번에 깨어 있을 시간 */
+  private awakeSince = 0;
+  private awakeFor = 0;
   private stateUntil = 0;
   private talking = false;
   private variant: ReactVariant | undefined = undefined;
@@ -191,6 +199,7 @@ export class Character {
       const floor = this.path[0];
       this.s = floor ? Math.random() * floor.length : 0;
       this.rot = 0;
+      this.wakeUp();
       this.enter("idle");
     }
     this.render();
@@ -298,6 +307,7 @@ export class Character {
   /** 메뉴의 잠자기/깨우기. 쉬는 중이면 깨우고, 아니면 제자리에서 한참 쉰다 */
   toggleSleep(): void {
     if (this.state === "rest") {
+      this.wakeUp();
       this.enter("idle");
       return;
     }
@@ -371,7 +381,8 @@ export class Character {
     this.variant = variant;
     const now = performance.now();
     if (state === "idle") this.stateUntil = now + randomBetween(IDLE_MS);
-    if (state === "rest") this.stateUntil = now + randomBetween(REST_MS);
+    if (state === "rest") this.stateUntil = now + randomBetween(SLEEP_MS);
+    if (state === "sit") this.stateUntil = now + randomBetween(SIT_MS);
     if (state === "land") this.stateUntil = now + LAND_MS;
     if (state === "react") this.stateUntil = now + REACT_MS;
     this.syncSkin();
@@ -394,9 +405,15 @@ export class Character {
     return best;
   }
 
+  private wakeUp(): void {
+    this.awakeSince = performance.now();
+    this.awakeFor = randomBetween(AWAKE_MS);
+  }
+
   private chooseNext(): void {
     let delta: number;
-    if (Math.random() < REST_CHANCE) {
+    if (performance.now() - this.awakeSince >= this.awakeFor) {
+      // 잠들 시간: 가까운 구석으로 가서 잔다
       delta = angleLike(this.s, this.nearestRestSpot(), this.perimeter);
       this.restOnArrive = true;
     } else {
@@ -417,14 +434,23 @@ export class Character {
     if (this.talking && !this.isInteractive()) return;
     switch (this.state) {
       case "idle":
-      case "rest":
+      case "sit":
         if (now >= this.stateUntil) this.chooseNext();
+        break;
+      case "rest":
+        if (now >= this.stateUntil) {
+          this.wakeUp();
+          this.chooseNext();
+        }
         break;
       case "walk": {
         const step = Math.min(WALK_SPEED * dt, this.walkRemaining);
         this.s = mod(this.s + this.dir * step, this.perimeter);
         this.walkRemaining -= step;
-        if (this.walkRemaining <= 0) this.enter(this.restOnArrive ? "rest" : "idle");
+        if (this.walkRemaining <= 0) {
+          if (this.restOnArrive) this.enter("rest");
+          else this.enter(Math.random() < SIT_CHANCE ? "sit" : "idle");
+        }
         break;
       }
       case "held":

@@ -1,0 +1,98 @@
+{
+  "name": "chii",
+  "frameWidth": 160,
+  "frameHeight": 200,
+  "displaySize": 80,
+  "animations": {
+    "idle": {
+      "file": "idle.png",
+      "frames": 4,
+      "fps": 4,
+      "loop": true
+    },
+    "walk": {
+      "file": "walk.png",
+      "frames": 6,
+      "fps": 10,
+      "loop": true
+    },
+    "rest": {
+      "file": "rest.png",
+      "frames": 4,
+      "fps": 3,
+      "loop": true
+    },
+    "talk": {
+      "file": "talk.png",
+      "frames": 4,
+      "fps": 6,
+      "loop": true
+    },
+    "held": {
+      "file": "held.png",
+      "frames": 4,
+      "fps": 6,
+      "loop": true
+    },
+    "fall": {
+      "file": "fall.png",
+      "frames": 3,
+      "fps": 8,
+      "loop": true
+    },
+    "land": {
+      "file": "land.png",
+      "frames": 4,
+      "fps": 12,
+      "loop": false
+    },
+    "react-happy": {
+      "file": "react-happy.png",
+      "frames": 7,
+      "fps": 10,
+      "loop": false
+    },
+    "react-surprised": {
+      "file": "react-surprised.png",
+      "frames": 7,
+      "fps": 10,
+      "loop": false
+    },
+    "react-dizzy": {
+      "file": "react-dizzy.png",
+      "frames": 7,
+      "fps": 10,
+      "loop": false
+    },
+    "pet": {
+      "file": "pet.png",
+      "frames": 4,
+      "fps": 5,
+      "loop": true
+    },
+    "eat": {
+      "file": "eat.png",
+      "frames": 6,
+      "fps": 8,
+      "loop": true
+    },
+    "idle-hungry": {
+      "file": "idle-hungry.png",
+      "frames": 4,
+      "fps": 4,
+      "loop": true
+    },
+    "walk-hungry": {
+      "file": "walk-hungry.png",
+      "frames": 6,
+      "fps": 10,
+      "loop": true
+    },
+    "rest-hungry": {
+      "file": "rest-hungry.png",
+      "frames": 6,
+      "fps": 3,
+      "loop": true
+    }
+  }
+}

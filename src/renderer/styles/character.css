@@ -1,0 +1,441 @@
+.character {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 80px;
+  height: 80px;
+  cursor: pointer;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+.character-skin {
+  width: 100%;
+  height: 100%;
+  transform: scaleX(var(--dir, 1));
+}
+
+.character-skin svg {
+  display: block;
+  overflow: visible;
+  width: 100%;
+  height: 100%;
+}
+
+.chii-body {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: chii-breathe 2.6s ease-in-out infinite;
+}
+
+.chii-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chii-blink 4.5s infinite;
+}
+
+.chii-foot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* walk */
+.character[data-anim="walk"] .chii-body {
+  animation: chii-hop 0.46s ease-in-out infinite;
+}
+
+.character[data-anim="walk"] .chii-foot-l {
+  animation: chii-step 0.46s ease-in-out infinite;
+}
+
+.character[data-anim="walk"] .chii-foot-r {
+  animation: chii-step 0.46s ease-in-out infinite;
+  animation-delay: 0.23s;
+}
+
+/* rest (구석에 앉아 쉬기) */
+.character[data-anim="rest"] .chii-body {
+  animation: chii-rest-breathe 3.2s ease-in-out infinite;
+}
+
+.character[data-anim="rest"] .chii-eye {
+  animation: none;
+  transform: scaleY(0.12);
+}
+
+/* talk (알림 중) */
+.character[data-anim="talk"] .chii-body {
+  animation: chii-wiggle 0.7s ease-in-out infinite;
+}
+
+@keyframes chii-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.02, 0.97);
+  }
+}
+
+@keyframes chii-rest-breathe {
+  0%,
+  100% {
+    transform: scale(1.06, 0.9);
+  }
+  50% {
+    transform: scale(1.08, 0.87);
+  }
+}
+
+@keyframes chii-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  50% {
+    transform: translateY(-5px) scale(0.97, 1.04);
+  }
+}
+
+@keyframes chii-step {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes chii-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes chii-wiggle {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+/* held (들려 있음) */
+.character {
+  cursor: grab;
+}
+
+.character[data-anim="held"] {
+  cursor: grabbing;
+}
+
+.character[data-anim="held"] .chii-body {
+  transform-origin: 50% 0;
+  animation: chii-dangle 1.1s ease-in-out infinite;
+}
+
+.character[data-anim="held"] .chii-eye {
+  animation: none;
+  transform: scale(1.2);
+}
+
+.character[data-anim="held"] .chii-foot-l {
+  animation: chii-kick 0.5s ease-in-out infinite;
+}
+
+.character[data-anim="held"] .chii-foot-r {
+  animation: chii-kick 0.5s ease-in-out infinite;
+  animation-delay: 0.25s;
+}
+
+/* fall (떨어지는 중) */
+.character[data-anim="fall"] .chii-body {
+  animation: none;
+  transform: scale(0.9, 1.12);
+}
+
+.character[data-anim="fall"] .chii-eye {
+  animation: none;
+  transform: scaleY(0.6);
+}
+
+/* land (착지) */
+.character[data-anim="land"] .chii-body {
+  animation: chii-land 0.35s ease-out forwards;
+}
+
+@keyframes chii-dangle {
+  0%,
+  100% {
+    transform: scale(0.95, 1.07) rotate(-4deg);
+  }
+  50% {
+    transform: scale(0.95, 1.07) rotate(4deg);
+  }
+}
+
+@keyframes chii-kick {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+@keyframes chii-land {
+  0% {
+    transform: scale(1.28, 0.68);
+  }
+  55% {
+    transform: scale(0.94, 1.08);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+/* react (탭 반응) */
+.character[data-anim="react"][data-variant="happy"] .chii-body {
+  animation: chii-happy 0.4s ease-out 2;
+}
+
+.character[data-anim="react"][data-variant="happy"] .chii-eye {
+  animation: none;
+  transform: scaleY(0.25);
+}
+
+.character[data-anim="react"][data-variant="surprised"] .chii-body {
+  animation: chii-surprised 0.8s ease-out;
+}
+
+.character[data-anim="react"][data-variant="surprised"] .chii-eye {
+  animation: none;
+  transform: scale(1.35);
+}
+
+.character[data-anim="react"][data-variant="dizzy"] .chii-body {
+  animation: chii-dizzy 0.8s ease-in-out;
+}
+
+.character[data-anim="react"][data-variant="dizzy"] .chii-eye {
+  animation: none;
+  transform: scale(0.8, 0.5);
+}
+
+/* pet (쓰다듬기) */
+.character[data-anim="pet"] .chii-body {
+  animation: chii-pet 1.2s ease-in-out infinite;
+}
+
+.character[data-anim="pet"] .chii-eye {
+  animation: none;
+  transform: scaleY(0.12);
+}
+
+.character[data-anim="pet"] .chii-blush {
+  opacity: 1;
+}
+
+.chii-hearts {
+  display: none;
+  position: absolute;
+  top: -6px;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  pointer-events: none;
+}
+
+.character[data-anim="pet"] .chii-hearts {
+  display: block;
+}
+
+.chii-hearts span {
+  position: absolute;
+  bottom: 0;
+  width: 10px;
+  height: 10px;
+  background: #ff6b8a;
+  clip-path: path("M5 9 L1 4.5 A2.3 2.3 0 0 1 5 2 A2.3 2.3 0 0 1 9 4.5 Z");
+  opacity: 0;
+  animation: chii-heart 1.4s ease-out infinite;
+}
+
+.chii-hearts span:nth-child(1) {
+  left: 18%;
+}
+
+.chii-hearts span:nth-child(2) {
+  left: 48%;
+  animation-delay: 0.45s;
+}
+
+.chii-hearts span:nth-child(3) {
+  left: 74%;
+  animation-delay: 0.9s;
+}
+
+@keyframes chii-happy {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  40% {
+    transform: translateY(-14px) scale(0.94, 1.08);
+  }
+  70% {
+    transform: translateY(0) scale(1.08, 0.92);
+  }
+}
+
+@keyframes chii-surprised {
+  0% {
+    transform: scale(1, 1);
+  }
+  15% {
+    transform: scale(1.12, 1.12) translateX(-3px);
+  }
+  30% {
+    transform: scale(1.12, 1.12) translateX(3px);
+  }
+  45% {
+    transform: scale(1.12, 1.12) translateX(-2px);
+  }
+  60% {
+    transform: scale(1.12, 1.12) translateX(0);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+@keyframes chii-dizzy {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-14deg);
+  }
+  50% {
+    transform: rotate(12deg);
+  }
+  75% {
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes chii-pet {
+  0%,
+  100% {
+    transform: scale(1.03, 0.97) rotate(-2deg);
+  }
+  50% {
+    transform: scale(1.03, 0.97) rotate(2deg);
+  }
+}
+
+@keyframes chii-heart {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-34px) scale(1.1);
+  }
+}
+
+/* mood: hungry (idle/walk/rest 에서만 표정 변화) */
+.chii-mouth-sad {
+  display: none;
+}
+
+.character[data-mood="hungry"]:is([data-anim="idle"], [data-anim="walk"], [data-anim="rest"])
+  .chii-mouth-smile {
+  display: none;
+}
+
+.character[data-mood="hungry"]:is([data-anim="idle"], [data-anim="walk"], [data-anim="rest"])
+  .chii-mouth-sad {
+  display: block;
+}
+
+.character[data-mood="hungry"]:is([data-anim="idle"], [data-anim="walk"]) .chii-eye {
+  animation: none;
+  transform: scaleY(0.7);
+}
+
+/* eat (밥 먹기): 앞으로 숙이고 오물오물 */
+.character[data-anim="eat"] .chii-body {
+  animation: chii-eat 0.5s ease-in-out infinite;
+}
+
+.character[data-anim="eat"] .chii-eye {
+  animation: none;
+  transform: scaleY(0.35);
+}
+
+.bowl {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 24px;
+  transform-origin: 50% 100%;
+  pointer-events: none;
+}
+
+.bowl[hidden] {
+  display: none;
+}
+
+.bowl svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bowl-food {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: bowl-eat 4s linear forwards;
+}
+
+@keyframes chii-eat {
+  0%,
+  100% {
+    transform: rotate(10deg) scale(1, 0.96);
+  }
+  50% {
+    transform: rotate(12deg) scale(1.03, 0.9);
+  }
+}
+
+@keyframes bowl-eat {
+  0% {
+    transform: scale(1, 1);
+  }
+  100% {
+    transform: scale(0.3, 0.1);
+  }
+}
+
+/* 스프라이트 스킨 */
+.sprite {
+  background-repeat: no-repeat;
+}

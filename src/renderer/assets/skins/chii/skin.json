@@ -99,6 +99,12 @@
       "frames": 4,
       "fps": 8,
       "loop": true
+    },
+    "sing": {
+      "file": "sing.png",
+      "frames": 4,
+      "fps": 4,
+      "loop": true
     }
   }
 }

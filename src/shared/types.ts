@@ -34,7 +34,18 @@ export const INTERVAL_OPTIONS: Record<ReminderKind, readonly number[]> = {
 };
 
 export type AnimState =
-  "idle" | "walk" | "rest" | "talk" | "held" | "fall" | "land" | "react" | "pet" | "eat" | "sit";
+  | "idle"
+  | "walk"
+  | "rest"
+  | "talk"
+  | "held"
+  | "fall"
+  | "land"
+  | "react"
+  | "pet"
+  | "eat"
+  | "sit"
+  | "sing";
 
 /** 탭 반응 종류 (react 상태의 변형) */
 export type ReactVariant = "happy" | "surprised" | "dizzy";

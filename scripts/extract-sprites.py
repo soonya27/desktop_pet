@@ -24,7 +24,7 @@ ANIM = {  # fps, loop
   "fall": (8, True), "land": (12, False), "react-happy": (10, False), "react-surprised": (10, False),
   "react-dizzy": (10, False), "pet": (5, True), "eat": (8, True),
   "idle-hungry": (4, True), "walk-hungry": (10, True), "rest-hungry": (3, True),
-  "sit": (3, True),
+  "sit": (3, True), "sing": (4, True),
 }
 
 def cluster(vals, gap):
@@ -168,23 +168,56 @@ def key(im, radius=1):
     out = im.convert("RGBA"); out.putalpha(mask)
     return out
 
-def key_white(im):
-    """순백 배경 단일 이미지용: 가장자리와 이어진 흰색(거의 흰색)만 투명. 몸통 흰색은 외곽선이 막는다"""
+def key_white(im, radius=2):
+    """흰(거의 흰) 배경용: 가장자리와 이어진 흰색만 투명. 몸통 흰색은 외곽선이 막는다.
+    외곽선의 안티앨리어싱 틈으로 새지 않도록 잉크를 radius px 팽창해 벽으로 쓰고, 끝나면 그만큼 되돌린다"""
     im = im.convert("RGB"); W, H = im.size; px = im.load()
-    def white(x, y):
+    def near_white(x, y):
         r, g, b = px[x, y]; return min(r, g, b) >= 232 and max(r, g, b) - min(r, g, b) <= 12
+    # 배경이 '흰 칸 + 연회색(236~246) 칸' 체커이면, 연회색 칸 근처의 흰색만 배경으로 본다.
+    # 평평한 순백 몸통은 외곽선이 열려 있어도(기타·그루터기에 가린 경우) 배경으로 새지 않는다
+    def light_gray(x, y):
+        r, g, b = px[x, y]; return 236 <= min(r, g, b) and max(r, g, b) <= 247 and max(r, g, b) - min(r, g, b) <= 6
+    R = 6
+    ring = [(x, y) for x in range(W) for y in list(range(R)) + list(range(H - R, H))] + \
+           [(x, y) for y in range(H) for x in list(range(R)) + list(range(W - R, W))]
+    checker_mode = sum(1 for x, y in ring if light_gray(x, y)) > len(ring) * 0.1
+    if checker_mode:
+        D = 10
+        near_gray = [[False] * H for _ in range(W)]
+        for x in range(W):
+            for y in range(H):
+                if light_gray(x, y):
+                    for nx in range(max(0, x - D), min(W, x + D + 1)):
+                        for ny in range(max(0, y - D), min(H, y + D + 1)):
+                            near_gray[nx][ny] = True
+        white = lambda x, y: near_white(x, y) and near_gray[x][y]
+    else:
+        white = near_white
+    ink = [[max(px[x, y]) < 150 for y in range(H)] for x in range(W)]
+    wall = [[False] * H for _ in range(W)]
+    for x in range(W):
+        for y in range(H):
+            if ink[x][y]:
+                for nx in range(x - radius, x + radius + 1):
+                    for ny in range(y - radius, y + radius + 1):
+                        if 0 <= nx < W and 0 <= ny < H: wall[nx][ny] = True
     ext = [[False] * H for _ in range(W)]; q = deque()
     for x in range(W):
         for y in (0, H - 1):
-            if white(x, y) and not ext[x][y]: ext[x][y] = True; q.append((x, y))
+            if white(x, y) and not wall[x][y] and not ext[x][y]: ext[x][y] = True; q.append((x, y))
     for y in range(H):
         for x in (0, W - 1):
-            if white(x, y) and not ext[x][y]: ext[x][y] = True; q.append((x, y))
+            if white(x, y) and not wall[x][y] and not ext[x][y]: ext[x][y] = True; q.append((x, y))
     while q:
         x, y = q.popleft()
         for nx, ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
-            if 0 <= nx < W and 0 <= ny < H and not ext[nx][ny] and white(nx, ny):
+            if 0 <= nx < W and 0 <= ny < H and not ext[nx][ny] and not wall[nx][ny] and white(nx, ny):
                 ext[nx][ny] = True; q.append((nx, ny))
+    for _ in range(radius):
+        peel = [(x, y) for x in range(W) for y in range(H) if not ext[x][y] and not ink[x][y] and white(x, y)
+                and any(0 <= nx < W and 0 <= ny < H and ext[nx][ny] for nx, ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)))]
+        for x, y in peel: ext[x][y] = True
     # 외곽선 바깥의 연한 안티앨리어싱 픽셀(밝은 회색)을 한 겹 더 벗긴다
     fringe = [(x, y) for x in range(W) for y in range(H) if not ext[x][y] and min(px[x, y]) >= 200
               and any(0 <= nx < W and 0 <= ny < H and ext[nx][ny] for nx, ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)))]
@@ -287,6 +320,8 @@ GEOMETRY = {
   "Gemini_Generated_Image_5fafkc5fafkc5faf.png":     [("talk", 4, 281, 1126, 542, 727, [])],
   # 들림: 사용자 교체본 (흰 배경, 테두리 없음, 7프레임, 프로펠러로 들려 올라감)
   "held-v2.png": [("held", 7, 0, 2418, 0, 427, [])],
+  # 노래하기: 그루터기에 앉아 기타. 시트의 1·3·4번은 몸통 안까지 체커 무늬가 그려져 있어 분리 불가 → 2번만 쓰고 모션 합성
+  "singing.png": [("sing", 4, 57, 1189, 440, 752, [1, 3, 4])],
   # (2)의 fall 행(거꾸로 떨어지는 그림)은 쓰지 않는다. 사용자 요청으로 fall 상태에 land.png를 쓴다
   "Gemini_Generated_Image_5fafkc5fafkc5faf (3).png": [("land", 4, 2, 2062, 58, 463, [])],
   "Gemini_Generated_Image_daje7mdaje7mdaje.png":     [("react-happy", 7, 165, 1395, 70, 247, []), ("react-surprised", 7, 165, 1395, 307, 493, []), ("react-dizzy", 7, 187, 1395, 543, 729, [])],
@@ -304,17 +339,17 @@ ONLY = [o for o in __import__('os').environ.get('ONLY', '').split(',') if o]
 # 몸통만 남길 애니메이션 (잠자기: zzz 말풍선 제거)
 MAIN_ONLY = {"rest"}
 # 프레임이 1장뿐인 애니메이션에 숨쉬기 모션을 합성
-SYNTH_BREATHE = {"sit"}
+SYNTH_BREATHE = {"sit", "sing"}
 # 순백 배경 단일 이미지 (체커보드 아님)
-WHITE_BG = {"sit", "held"}
+WHITE_BG = {"sit", "held", "sing"}
 # 애니메이션별 최대 너비(px). 앉은 자세는 idle과 머리 크기를 맞추기 위해 조금 작게
-WIDTH_FIT = {"sit": 132}
+WIDTH_FIT = {"sit": 132, "sing": 154}
 # 바닥선에 걸려 발이 평평하게 끊긴 시트: 발을 둥글게 이어 그린다
 FEET_EXTEND = {"walk", "rest", "talk"}
 # 다른 애니메이션의 키잉된 프레임을 모아 만드는 애니메이션: (원본 이름, 프레임 번호 1부터)
 COMPOSE = {"idle": [("react-happy", 1), ("react-surprised", 7), ("react-dizzy", 7), ("react-happy", 7)]}
 # 몸통 덩어리 높이 목표 재정의. held는 프로펠러·집게가 몸에 붙어 한 덩어리라 전체를 프레임 높이에 맞춘다 (몸은 idle과 비슷해짐)
-BODY_FIT = {"held": 232}
+BODY_FIT = {"held": 232, "sing": 168}   # sing: 캐릭터+그루터기+잔디 전체 높이. 캐릭터는 idle과 비슷해진다
 # ONLY로 일부만 다시 뽑을 때는 기존 skin.json을 유지하며 갱신
 if ONLY:
     try:

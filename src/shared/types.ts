@@ -45,7 +45,8 @@ export type AnimState =
   | "pet"
   | "eat"
   | "sit"
-  | "sing";
+  | "sing"
+  | "photo";
 
 /** 탭 반응 종류 (react 상태의 변형) */
 export type ReactVariant = "happy" | "surprised" | "dizzy";

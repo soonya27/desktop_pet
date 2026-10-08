@@ -20,11 +20,11 @@ SHEETS = {
   "Gemini_Generated_Image_daje7mdaje7mdaje (2).png":  [("idle-hungry", {"n": 4}), ("walk-hungry", {"n": 6}), ("rest-hungry", {"n": 6})],
 }
 ANIM = {  # fps, loop
-  "idle": (4, True), "walk": (10, True), "rest": (3, True), "talk": (6, True), "held": (8, True),
+  "idle": (4, True), "walk": (10, True), "rest": (2, True), "talk": (6, True), "held": (8, True),
   "fall": (8, True), "land": (12, False), "react-happy": (10, False), "react-surprised": (10, False),
   "react-dizzy": (10, False), "pet": (5, True), "eat": (8, True),
   "idle-hungry": (4, True), "walk-hungry": (10, True), "rest-hungry": (3, True),
-  "sit": (3, True), "sing": (4, True),
+  "sit": (3, True), "sing": (4, True), "photo": (2, True),
 }
 
 def cluster(vals, gap):
@@ -182,7 +182,17 @@ def key_white(im, radius=2):
     ring = [(x, y) for x in range(W) for y in list(range(R)) + list(range(H - R, H))] + \
            [(x, y) for y in range(H) for x in list(range(R)) + list(range(W - R, W))]
     checker_mode = sum(1 for x, y in ring if light_gray(x, y)) > len(ring) * 0.1
-    if checker_mode:
+    # 가장자리 링의 무채색 밝기 단계(예: 흰 255 + 회색 205 체커)를 샘플링해 배경색으로 쓴다
+    import statistics as _st
+    neutral = sorted(max(px[x, y]) for x, y in ring if max(px[x, y]) - min(px[x, y]) <= 12 and min(px[x, y]) >= 180)
+    # 가장 어두운 배경 밝기(2퍼센타일). 흰 배경이면 ~250, 흰+회색(205) 체커면 ~200
+    floor = neutral[int(len(neutral) * 0.02)] if neutral else 255
+    if not checker_mode and floor < 232:
+        def white(x, y):
+            # 회색 칸·전환 픽셀·살짝 색조가 섞인 halo까지 모두 배경. 몸통 흰색은 잉크 벽이 막는다
+            r, g, b = px[x, y]
+            return max(r, g, b) - min(r, g, b) <= 28 and max(r, g, b) >= floor - 8
+    elif checker_mode:
         D = 10
         near_gray = [[False] * H for _ in range(W)]
         for x in range(W):
@@ -220,6 +230,35 @@ def key_white(im, radius=2):
         for x, y in peel: ext[x][y] = True
     # 외곽선 바깥의 연한 안티앨리어싱 픽셀(밝은 회색)을 한 겹 더 벗긴다
     fringe = [(x, y) for x in range(W) for y in range(H) if not ext[x][y] and min(px[x, y]) >= 200
+              and any(0 <= nx < W and 0 <= ny < H and ext[nx][ny] for nx, ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)))]
+    for x, y in fringe: ext[x][y] = True
+    mask = Image.new("L", (W, H), 255); mp = mask.load()
+    for x in range(W):
+        for y in range(H):
+            if ext[x][y]: mp[x, y] = 0
+    mask = mask.filter(ImageFilter.GaussianBlur(0.8))
+    out = im.convert("RGBA"); out.putalpha(mask)
+    return out
+
+def key_dark(im):
+    """어두운 회색 체커 배경용: 가장자리와 이어진 중간 회색(무채색 70~160)만 투명. 캐릭터는 밝고 외곽선은 더 어둡다"""
+    im = im.convert("RGB"); W, H = im.size; px = im.load()
+    def bg(x, y):
+        r, g, b = px[x, y]; return 70 <= min(r, g, b) and max(r, g, b) <= 160 and max(r, g, b) - min(r, g, b) <= 12
+    ext = [[False] * H for _ in range(W)]; q = deque()
+    for x in range(W):
+        for y in (0, H - 1):
+            if bg(x, y) and not ext[x][y]: ext[x][y] = True; q.append((x, y))
+    for y in range(H):
+        for x in (0, W - 1):
+            if bg(x, y) and not ext[x][y]: ext[x][y] = True; q.append((x, y))
+    while q:
+        x, y = q.popleft()
+        for nx, ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)):
+            if 0 <= nx < W and 0 <= ny < H and not ext[nx][ny] and bg(nx, ny):
+                ext[nx][ny] = True; q.append((nx, ny))
+    # 외곽선 바깥의 전환 픽셀(배경과 섞인 어두운 띠) 한 겹 제거
+    fringe = [(x, y) for x in range(W) for y in range(H) if not ext[x][y] and max(px[x, y]) <= 175 and max(px[x, y]) - min(px[x, y]) <= 16
               and any(0 <= nx < W and 0 <= ny < H and ext[nx][ny] for nx, ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1)))]
     for x, y in fringe: ext[x][y] = True
     mask = Image.new("L", (W, H), 255); mp = mask.load()
@@ -316,12 +355,17 @@ manifest = {"name": "chii", "frameWidth": FW, "frameHeight": FH, "displaySize": 
 # 행 좌표 수동 지정: (이름, 프레임 수, x0, x1, y0, y1, 버릴 프레임)
 GEOMETRY = {
   # idle 행은 몸 밑면이 바닥선에 잘려 있어 쓰지 않는다 → COMPOSE로 react 시트의 서 있는 프레임을 재구성
-  "Gemini_Generated_Image_yxt6dzyxt6dzyxt6.png":     [("walk", 6, 117, 1302, 306, 492, []), ("rest", 4, 281, 1126, 542, 727, [])],
+  "Gemini_Generated_Image_yxt6dzyxt6dzyxt6.png":     [("walk", 6, 117, 1302, 306, 492, [])],   # rest 행은 sleep.png로 대체
   "Gemini_Generated_Image_5fafkc5fafkc5faf.png":     [("talk", 4, 281, 1126, 542, 727, [])],
   # 들림: 사용자 교체본 (흰 배경, 테두리 없음, 7프레임, 프로펠러로 들려 올라감)
   "held-v2.png": [("held", 7, 0, 2418, 0, 427, [])],
   # 노래하기: 그루터기에 앉아 기타. 시트의 1·3·4번은 몸통 안까지 체커 무늬가 그려져 있어 분리 불가 → 2번만 쓰고 모션 합성
   "singing.png": [("sing", 4, 57, 1189, 440, 752, [1, 3, 4])],
+  # 사진 찍기: 4프레임, 밝은 체커 배경
+  "photo.png": [("photo", 4, 50, 1340, 200, 560, [])],
+  # 잠자기(뒹굴기): 5x5 = 25프레임, 어두운 체커 배경. 행마다 재료로 뽑아 COMPOSE에서 rest로 합친다
+  "sleep.png": [("_sleep1", 5, 40, 1330, 20, 140, []), ("_sleep2", 5, 40, 1330, 172, 302, []), ("_sleep3", 5, 40, 1330, 330, 446, []),
+                ("_sleep4", 5, 40, 1330, 485, 600, []), ("_sleep5", 5, 40, 1330, 636, 760, [])],
   # (2)의 fall 행(거꾸로 떨어지는 그림)은 쓰지 않는다. 사용자 요청으로 fall 상태에 land.png를 쓴다
   "Gemini_Generated_Image_5fafkc5fafkc5faf (3).png": [("land", 4, 2, 2062, 58, 463, [])],
   "Gemini_Generated_Image_daje7mdaje7mdaje.png":     [("react-happy", 7, 165, 1395, 70, 247, []), ("react-surprised", 7, 165, 1395, 307, 493, []), ("react-dizzy", 7, 187, 1395, 543, 729, [])],
@@ -341,13 +385,19 @@ MAIN_ONLY = {"rest"}
 # 프레임이 1장뿐인 애니메이션에 숨쉬기 모션을 합성
 SYNTH_BREATHE = {"sit", "sing"}
 # 순백 배경 단일 이미지 (체커보드 아님)
-WHITE_BG = {"sit", "held", "sing"}
+WHITE_BG = {"sit", "held", "sing", "photo"}
+# 어두운 회색 체커 배경 시트
+DARK_BG = {"_sleep1", "_sleep2", "_sleep3", "_sleep4", "_sleep5"}
 # 애니메이션별 최대 너비(px). 앉은 자세는 idle과 머리 크기를 맞추기 위해 조금 작게
 WIDTH_FIT = {"sit": 132, "sing": 154}
 # 바닥선에 걸려 발이 평평하게 끊긴 시트: 발을 둥글게 이어 그린다
-FEET_EXTEND = {"walk", "rest", "talk"}
+FEET_EXTEND = {"walk", "talk"}
 # 다른 애니메이션의 키잉된 프레임을 모아 만드는 애니메이션: (원본 이름, 프레임 번호 1부터)
-COMPOSE = {"idle": [("react-happy", 1), ("react-surprised", 7), ("react-dizzy", 7), ("react-happy", 7)]}
+COMPOSE = {
+  "idle": [("react-happy", 1), ("react-surprised", 7), ("react-dizzy", 7), ("react-happy", 7)],
+  # 잠자기: 25프레임 중 24번(깨진 프레임) 제외
+  "rest": [(f"_sleep{r}", c) for r in range(1, 6) for c in range(1, 6) if (r, c) != (5, 4)],
+}
 # 몸통 덩어리 높이 목표 재정의. held는 프로펠러·집게가 몸에 붙어 한 덩어리라 전체를 프레임 높이에 맞춘다 (몸은 idle과 비슷해짐)
 BODY_FIT = {"held": 232, "sing": 168}   # sing: 캐릭터+그루터기+잔디 전체 높이. 캐릭터는 idle과 비슷해진다
 # ONLY로 일부만 다시 뽑을 때는 기존 skin.json을 유지하며 갱신
@@ -391,8 +441,8 @@ for file, rows in GEOMETRY.items():
         frames = [f for i, f in enumerate(frames) if (i + 1) not in drop]
         keyed = []
         for f in frames:
-            k = key_white(f) if name in WHITE_BG else key(f)
-            if name not in WHITE_BG and blue_count(k) < blue_count(f.convert("RGB")) * 0.6:   # 외곽선 틈으로 머리까지 샌 경우
+            k = key_white(f) if name in WHITE_BG else key_dark(f) if name in DARK_BG else key(f)
+            if name not in WHITE_BG and name not in DARK_BG and blue_count(k) < blue_count(f.convert("RGB")) * 0.6:   # 외곽선 틈으로 머리까지 샌 경우
                 k = key(f, radius=2)
                 print(f"  ({name}: 프레임 {len(keyed) + 1} 머리 손실 → 반경 2로 재처리, 파랑 {blue_count(k)}/{blue_count(f.convert('RGB'))})")
             if name in MAIN_ONLY: k = keep_main_component(k)
@@ -405,6 +455,7 @@ for file, rows in GEOMETRY.items():
                 return v.rotate(deg, resample=Image.BICUBIC, expand=True, center=(v.width / 2, v.height)) if deg else v
             keyed = [base, variant(1.025, 0.965, 0), variant(1.0, 1.0, 1.5), variant(0.985, 1.02, -1.5)]
         all_keyed[name] = keyed
+        if name.startswith('_'): continue
         if not ONLY or name in ONLY: assemble(name, keyed)
 for name, parts in COMPOSE.items():
     if ONLY and name not in ONLY: continue

@@ -18,8 +18,8 @@
     },
     "rest": {
       "file": "rest.png",
-      "frames": 4,
-      "fps": 3,
+      "frames": 24,
+      "fps": 2,
       "loop": true
     },
     "talk": {
@@ -104,6 +104,12 @@
       "file": "sing.png",
       "frames": 4,
       "fps": 4,
+      "loop": true
+    },
+    "photo": {
+      "file": "photo.png",
+      "frames": 4,
+      "fps": 2,
       "loop": true
     }
   }
